@@ -130,3 +130,4 @@ dist
 .pnp.*
 
 db.sqlite
+token.json
