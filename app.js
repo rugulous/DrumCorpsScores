@@ -74,7 +74,6 @@ async function updateRankings(db) {
         return;
     }
 
-    console.log(year);
     const ranks = await sequelize.query(`
     SELECT c.Name, p.Division, c.ExternalID, p.Score, s.Date 
     FROM Corps c
@@ -103,8 +102,6 @@ async function updateRankings(db) {
         } else {
             divCount[ranks[i].Division] = 1;
         }
-
-        console.log(`${divCount[ranks[i].Division]}: ${ranks[i].Name}`);
 
         await db.Ranking.create({
             Division: ranks[i].Division,
@@ -141,8 +138,14 @@ async function doPost(db) {
             div = r.Division
         }
 
-        let d = new Date(r.LastShowDate);
-        post += `${r.Rank}. ${r.CorpsID} - ${r.Score} (${util.dateToString(d, false)})\r\n`;
+        const corps = await db.Corps.findOne({
+            where: {
+                ExternalID: r.CorpsID
+            }
+        });
+        const d = new Date(r.LastShowDate);
+
+        post += `${r.Rank}. ${corps.Name} - ${String(r.Score).padEnd(5, '0')} (${util.dateToString(d, false)})\r\n`;
     }
 
     post += `\r\nN.B. all scores are taken from the DCI website and are correct at time of posting`;
