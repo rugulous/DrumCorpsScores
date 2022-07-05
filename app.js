@@ -3,8 +3,8 @@
 const DCI = require('./lib/DCI');
 
 async function main(){
-    const events = await DCI.getEvents();
-    console.log(events);
+    const corps = await DCI.getCorps();
+    console.log(corps);
 }
 
 main();
