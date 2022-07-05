@@ -22,11 +22,21 @@ async function main() {
         });
     })
 
-    const dEvents = await DCI.getEventsForDate(new Date());
+    const date = new Date("2022-07-02");
+
+    const events = await DCI.getEventsForDate(date);
     console.log("Today's shows are:");
-    dEvents.forEach(e => {
-        console.log(`- ${e.eventName}, at ${e.venue.name}`);
-    });
+    for(let i = 0; i < events.length; i++){
+        const e = events[i];
+        console.log(e.name);
+
+        await db.Show.upsert({
+            Name: e.name,
+            Date: e.startDate,
+            Slug: e.slug,
+            ExternalID: e.id
+        });
+    }
 
     await db.sequelize.close();
 }
