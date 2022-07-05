@@ -10,6 +10,12 @@ async function main(){
 
     const events = await DCI.getEvents();
     console.log(events);
+
+    const dEvents = await DCI.getEventsForDate(new Date());
+    console.log("Today's shows are:");
+    dEvents.forEach(e => {
+        console.log(`- ${e.eventName}, at ${e.venue.name}`);
+    })
 }
 
 main();
