@@ -20,7 +20,7 @@ async function populateData(db) {
         });
     })
 
-    const date = new Date("2022-07-02");
+    const date = new Date();
 
     const events = await DCI.getEventsForDate(date);
     console.log("Today's shows are:");
@@ -59,7 +59,7 @@ async function populateData(db) {
 }
 
 async function updateRankings(db) {
-    const date = new Date('2022-07-02');
+    const date = new Date();
 
     let exists = await db.Ranking.findOne({
         where: {
@@ -67,7 +67,7 @@ async function updateRankings(db) {
         }
     });
 
-    if(exists != null){
+    if (exists != null) {
         console.log("Ranking already created!");
         return;
     }
@@ -95,7 +95,7 @@ async function updateRankings(db) {
 
     let divCount = {};
     for (let i = 0; i < ranks.length; i++) {
-        if(divCount.hasOwnProperty(ranks[i].Division)){
+        if (divCount.hasOwnProperty(ranks[i].Division)) {
             divCount[ranks[i].Division]++;
         } else {
             divCount[ranks[i].Division] = 1;
@@ -121,7 +121,7 @@ async function doPost(db) {
 async function main() {
     const db = await require('./lib/models')(sequelize);
 
-    //await populateData(db);
+    await populateData(db);
     await updateRankings(db);
     await doPost(db);
 
