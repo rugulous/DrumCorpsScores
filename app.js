@@ -1,66 +1,64 @@
 'use strict';
 
+const fs = require('fs');
+
 const DCI = require('./lib/DCI');
 const FB = require('./lib/FB');
+
+const dbPath = './db.sqlite';
 
 const { Sequelize, QueryTypes } = require('sequelize');
 const sequelize = new Sequelize({
     dialect: 'sqlite',
-    storage: './db.sqlite',
+    storage: dbPath,
     logging: false
 });
 
 const util = require('./lib/util');
 
 const date = new Date();
+date.setDate(date.getDate() - 1);
+
 const dateStr = util.dateToString(date);
 const year = String(date.getFullYear());
 
-async function populateData(db) {
-    //we may not have any bands in our table yet
-    //let's double-check these at the start!
-    const corps = await DCI.getCorps();
-    corps.forEach(async (c) => {
-        await db.Corps.upsert({
-            Name: c.name,
-            Slug: c.slug,
-            ExternalID: c.id
-        });
-    })
+async function saveEvent(db, e){
+    await db.Show.upsert({
+        Name: e.name,
+        Date: e.startDate,
+        Slug: e.slug,
+        ExternalID: e.id
+    });
 
+    const show = await DCI.getShowDetails(e.slug);
+    for (let j = 0; j < show.length; j++) {
+        const p = show[j];
+
+        const exists = await db.Performance.findOne({
+            where: {
+                ShowID: e.id,
+                CorpsID: p.orgGroupIdentifier
+            }
+        });
+
+        if (exists === null) {
+            await db.Performance.create({
+                ShowID: e.id,
+                CorpsID: p.orgGroupIdentifier,
+                Score: p.totalScore,
+                Division: p.divisionName
+            });
+        }
+    }
+}
+
+async function populateData(db) {
     const events = await DCI.getEventsForDate(date); //DCI.getEvents('<2022-07-05', 100, -1, "-startDate"); <- use this for initial population
     console.log("Today's shows are:");
     for (let i = 0; i < events.length; i++) {
         const e = events[i];
         console.log(e.name);
-
-        await db.Show.upsert({
-            Name: e.name,
-            Date: e.startDate,
-            Slug: e.slug,
-            ExternalID: e.id
-        });
-
-        const show = await DCI.getShowDetails(e.slug);
-        for (let j = 0; j < show.length; j++) {
-            const p = show[j];
-
-            const exists = await db.Performance.findOne({
-                where: {
-                    ShowID: e.id,
-                    CorpsID: p.orgGroupIdentifier
-                }
-            });
-
-            if (exists === null) {
-                await db.Performance.create({
-                    ShowID: e.id,
-                    CorpsID: p.orgGroupIdentifier,
-                    Score: p.totalScore,
-                    Division: p.divisionName
-                });
-            }
-        }
+        await saveEvent(db, e);
     }
 }
 
@@ -154,8 +152,36 @@ async function doPost(db) {
     console.log(`The post is available at https://facebook.com/${res.id}`);
 }
 
+async function initialise(db){
+    console.log("Initialising...");
+
+    //load bands
+    const corps = await DCI.getCorps();
+    corps.forEach(async (c) => {
+        await db.Corps.upsert({
+            Name: c.name,
+            Slug: c.slug,
+            ExternalID: c.id
+        });
+    });
+
+    //load previous shows
+    const events = await DCI.getEvents(`<${dateStr}`, 100, -1, "-startDate");
+    console.log("Today's shows are:");
+    for (let i = 0; i < events.length; i++) {
+        const e = events[i];
+        console.log(e.name);
+        await saveEvent(db, e);
+    }
+}
+
 async function main() {
+    const setup = fs.existsSync(dbPath);
     const db = await require('./lib/models')(sequelize);
+
+    if(!setup){
+        await initialise(db);
+    }
 
     await populateData(db);
     await updateRankings(db);
